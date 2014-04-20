@@ -1,4 +1,9 @@
 package probSkyline.dataStructure
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import org.apache.hadoop.io._;
+
 
 class Point(val dim: Int) extends Serializable{
 	var coordinates = new Array[Double](dim)
@@ -13,10 +18,6 @@ class Point(val dim: Int) extends Serializable{
 		for(i<- 0 until dim) coordinates(i) = pt(i)
 	}
 
-	import scalaMapReduce.FirstPhase._;
-	def setCasePoint(pt: PointCase){
-		for(i<- 0 until dim) coordinates(i) = pt.coordinates(i)
-	}
 
 	def setOneValue(onePoint: Point, ratio: Double){
 		for(i<- 0 until dim) coordinates(i) = onePoint(i) * ratio
@@ -59,5 +60,6 @@ class Point(val dim: Int) extends Serializable{
 	}
 
 	override def toString = coordinates.mkString(" ")
+
 }
 

@@ -1,11 +1,11 @@
 package probSkyline.dataStructure;
+
 import scala.collection.mutable.ListBuffer;
 import scala.collection.mutable.HashMap;
-import com.nicta.scoobi.core.WireFormat;
 import java.io.DataInput;
 import java.io.DataOutput;
 
-class Instance(val objID: Int, val instID: Int, val prob: Double, val dim: Int)extends Serializable with WireFormat[Instance]{ 
+class Instance(val objID: Int, val instID: Int, val prob: Double, val dim: Int)extends Serializable{ 
 	var instSkyProb = 0.0
 	var pt: Point = new Point(dim)
 	var instPotentialSkyline = true;
@@ -24,22 +24,6 @@ class Instance(val objID: Int, val instID: Int, val prob: Double, val dim: Int)e
 	def sum = pt.sum
 
 	override def toString = objID.toString + " " + instID.toString + " " + pt.toString +  " " + prob.toString
-
-	override def fromWire(in: DataInput) = {
-
-		val ret = new Instance(1,1,1.0,1);
-		ret;
-	}
-
-	override def toWire(inst: Instance, out: DataOutput) = {
-
-		out.writeInt(inst.objID);
-		out.writeInt(inst.instID);
-		out.writeDouble(inst.prob);
-		out.writeInt(inst.dim);
-		out.writeDouble(inst.instSkyProb);
-		out.writeBoolean(inst.instPotentialSkyline);
-	}
 
 }
 

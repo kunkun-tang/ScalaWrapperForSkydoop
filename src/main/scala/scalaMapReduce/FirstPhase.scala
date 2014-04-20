@@ -1,76 +1,72 @@
 package scalaMapReduce;
 
-import com.nicta.scoobi.Scoobi._;
-import Reduction._;
-import probSkyline.Util;
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.io.IntWritable
+import org.apache.hadoop.io.Text
+import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.mapreduce.Mapper
+import org.apache.hadoop.mapreduce.Reducer
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
+import org.apache.hadoop.util.GenericOptionsParser
 import probSkyline.dataStructure._;
-import probSkyline.dataStructure.Instance;
-import com.nicta.scoobi.core.WireFormat;
+import probSkyline.Util;
 
-object FirstPhase extends ScoobiApp {
+import scala.collection.JavaConversions._;
 
-	case class PointCase(val dim: Int, val coordinates: Array[Double])
-	case class InstanceCase(val objID: Int, val instID: Int, val prob: Double, val dim: Int, val arr: Array[Double])
 
-	val CC = Config.ClusterConfig;
-	val srcName = CC.getString("srcName");
-	val dim = CC.getInt("dim");
 
-	def run() {
+// This class performs the map operation, translating raw input into the key-value
+// pairs we will feed into our reduce operation.
+class TokenizerMapper extends Mapper[Object, Text, IntWritable, InstanceWritable] {
+  var one = new IntWritable(1)
+  val word = new Text
+  
+  override
+  def map(key:Object, value:Text, context:Mapper[Object, Text, IntWritable, InstanceWritable]#Context) = {
+    val inst = Util.stringToInstance(value.toString());
+    val partID = Util.getPartition(inst);
+		context.write(new IntWritable(partID), UtilDoop.instToinstWritable(inst));
+  }
+}
 
-		val lines = fromTextFile(args(0))
-		implicit val instFormat = WireFormat.mkCaseWireFormat(InstanceCase, InstanceCase.unapply _);
+  
+// This class performs the reduce operation, iterating over the key-value pairs
+// produced by our map operation to produce a result. In this case we just
+// calculate a simple total for each word seen.
+class IntSumReducer extends Reducer[IntWritable,InstanceWritable,IntWritable,IntWritable] {
+  override
+  def reduce(key:IntWritable, values:java.lang.Iterable[InstanceWritable], context:Reducer[IntWritable,InstanceWritable,IntWritable,IntWritable]#Context) = {
+    val sum = 5;
+    context.write(key, new IntWritable(sum))
+  }
+}
+  
+// This class configures and runs the job with the map and reduce classes we've
+// specified above.
+object FirstPhase{
 
-		val instMap = lines.mapFlatten(s => List(stringToCaseInstance(s)).toIterable )
-												.map(i => (getPartition(i), i)).groupByKey;
-
-		// for(inst <- instList){
-
-		// 	.map(word => (word, 1))
-		// 	.groupByKey
-		// 	.combine(Sum.int)
-		// }
-		// counts.toTextFile(args(1)).persist
-	}
-
-	def stringToCaseInstance(line: String) = {
-		val div = line.split(" ");
-		var inst: InstanceCase = null;
-		var arrRet = new Array[Double](dim)
-		for(i<-0 until dim) arrRet(i) = div(i+2).toDouble
-		if(div.length == dim + 3){
-			val pt = getPoint(div);
-			inst = InstanceCase(div(0).toInt, div(1).toInt, div(div.length-1).toDouble, dim, arrRet);
-		}
-		else println("Sth wrong in StringToInstance in Util.")
-		inst
-	}
-
-	def getPoint(div: Array[String]) = {
-		var arrRet = new Array[Double](dim)
-		for(i<-0 until dim) arrRet(i) = div(i+2).toDouble
-		val ret = PointCase(dim, arrRet);
-		ret;
-	}
-
-	def getPartition(inst: InstanceCase) = {
-
-		val nonCaseInst = caseInstanceToInstance(inst);
-		val ret = Util.getPartition(nonCaseInst);
-		ret; 
-	}
-
-	def arrToPoint(arr: Array[Double]) = {
-		val ret = new Point(dim);
-		ret.setArrValue(arr);
-		ret
-	}
-
-	def caseInstanceToInstance(inst: InstanceCase) = {
-		val pt = arrToPoint(inst.arr);
-		val retInst = new Instance(inst.objID, inst.instID, inst.prob, inst.dim);
-		retInst.pt = pt;
-		retInst
-	}
-	
+  def main(args:Array[String]) {
+    val conf = new Configuration()
+    val otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs
+    if (otherArgs.length != 2) {
+      println("Usage: wordcount <in> <out>");
+    }
+    else{
+      val job = new Job(conf, "word count")
+      job.setJarByClass(classOf[TokenizerMapper])
+      job.setMapperClass(classOf[TokenizerMapper])
+      job.setCombinerClass(classOf[IntSumReducer])
+      job.setReducerClass(classOf[IntSumReducer])
+      job.setOutputKeyClass(classOf[IntWritable])
+      job.setOutputValueClass(classOf[IntWritable])
+      FileInputFormat.addInputPath(job, new Path(args(0)))
+      FileOutputFormat.setOutputPath(job, new Path((args(1))))
+      if (job.waitForCompletion(true))
+        println(" return 0");
+      else
+        println(" return 1");
+    }
+  }
 }
