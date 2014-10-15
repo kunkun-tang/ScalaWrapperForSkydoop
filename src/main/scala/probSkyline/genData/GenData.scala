@@ -15,6 +15,7 @@ import scala.collection.mutable.HashSet;
 import scala.collection.mutable.ListBuffer;
 import scala.io.Source;
 import scala.math;
+import com.typesafe.config.ConfigFactory
 
 /*
  * After the raw data is obtained from the point distribution, we are able to 
@@ -22,11 +23,12 @@ import scala.math;
  */
 object GenData extends App{
 	
-	val CC = Config.ClusterConfig;
-	val fileName = CC.getString("rawFile");
-	val dim = CC.getInt("dim");
-	val objectNum = CC.getInt("objectNum");
-
+	val conf = ConfigFactory.load;
+	val fileName = conf.getString("GenData.rawFile");
+	val dim = conf.getInt("GenData.dim");
+	val objectNum = conf.getInt("GenData.objectNum");
+	val numInstOneObj = conf.getInt("GenData.instNum");
+	val widthObj = conf.getDouble("GenData.widthObj");
 
 	/*
 	 * Use Instance writer to write instances.
@@ -35,14 +37,13 @@ object GenData extends App{
 	var instID = 0;
 	var objID = 0;
 
-
 	/*
 	 * Some random generator is created for further use.
 	 */
 	val rng = new MersenneTwisterRNG();
 	val CUG = new ContinuousUniformGenerator(0.05, 0.95, rng);
-	val GG = new GaussianGenerator(0.025, 0.00625, rng);
-	val CUFG = new ContinuousUniformGenerator(1, 20, rng);
+	val GG = new GaussianGenerator(widthObj, 0.00625, rng);
+	val CUFG = new ContinuousUniformGenerator(1, numInstOneObj, rng);
 
 	def strToDouble(str: String) = str.toDouble;
 	for(line <- Source.fromFile(fileName).getLines()){
@@ -66,7 +67,6 @@ object GenData extends App{
 
 	// After writing finishes, it should close the file.
 	TIW.close()
-
 
 	/*
 	 * Based on the center of a point, it generate random point with Gaussian distribution

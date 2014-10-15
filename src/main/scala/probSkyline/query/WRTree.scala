@@ -11,6 +11,7 @@ import scala.collection.mutable.ListBuffer;
 import scala.collection.immutable.List;
 import scala.collection.mutable.HashMap;
 import scala.math;
+import com.typesafe.config.ConfigFactory
 
 class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 
@@ -24,7 +25,7 @@ class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 
 	def genPivotPoints() = {
 		var retPivotPoints = new ListBuffer[Point]();
-		val retList = Config.computeArrDouble();
+		val retList = Util.computeArrDouble();
 
 		if(WRTree.dim == 2){
 			val arrDouble = retList(0);
@@ -79,7 +80,6 @@ class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 	}
 
 	def findRightSeparation(inst: Instance) = {
-
 		/*
 		 * 0 represents the separation area which no instances are located.
 		 * 1- numPivot denotes the regular separation.
@@ -91,7 +91,6 @@ class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 	}
 
 	def findLeftSeparation(inst: Instance) = {
-
 		/*
 		 * 0 represents the separation area which no instances are located.
 		 * 1- numPivot denotes the regular separation.
@@ -146,14 +145,13 @@ class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 
 object WRTree{
 
-	val CC = Config.ClusterConfig;
-	val folderName = CC.getString("partFolder");
-	val dim = CC.getInt("dim");
-	val numPivot = CC.getInt("numPivot");
+	val conf = ConfigFactory.load;
+	def folderName = conf.getString("Query.partFolder");
+	def dim = conf.getInt("Query.dim");
+	def numPivot = conf.getInt("Query.numPivot");
 }
 
 class Separation{
-
 
 	// itemMap is the subset of cleanItemMap in OptimizedQuery.
 	val itemMap = new HashMap[Int, ListBuffer[Instance]]();

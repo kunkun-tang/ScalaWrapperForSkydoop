@@ -6,14 +6,15 @@ import com.typesafe.config._
 import scala.math;
 
 object Config {
+	
   private val root = ConfigFactory.load()
-
   val ClusterConfig = root.getConfig("ClusterConfig")
   val arrDouble = computeArrDouble()
 
   def computeArrDouble() = {
-  	val dim = ClusterConfig.getInt("dim");
-  	val splitNum = ClusterConfig.getInt("splitNum");
+  	val conf = ConfigFactory.load;
+		val dim = conf.getInt("GenData.dim");
+		val splitNum = conf.getInt("GenData.splitNum");
 
 		val retList = new ListBuffer[ListBuffer[Double]](); 
 		if(dim == 2){

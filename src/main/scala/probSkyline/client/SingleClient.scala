@@ -6,6 +6,7 @@ import scala.collection.mutable.ListBuffer
 import java.io.File
 import probSkyline.query._
 import probSkyline.Util
+import com.typesafe.config.ConfigFactory
 
 /**
  * SingleClient reads data from the folder part as the source,
@@ -14,8 +15,6 @@ import probSkyline.Util
  */
 object SingleClient extends App{
 
-	val CC = Config.ClusterConfig;
-
 	if(args.length != 2){
 		println("usage: scala SingleClient naive(optimized) single(all)")
 		System.exit(1);
@@ -23,14 +22,17 @@ object SingleClient extends App{
 	val argStr = args(1)
 
 	if(args(0) == "naive"){
+		val conf = ConfigFactory.load;
+		val testArea = conf.getString("Query.testArea");
+		val splitNum = conf.getInt("Query.splitNum");
+
 		println("The naive computing strategy: ");
 		if(argStr == "single"){
-			val nqClient = new NaiveQuery(CC.getString("testArea"))
+			val nqClient = new NaiveQuery(testArea)
 			nqClient.compProb(nqClient.getItemList)
 		}
 		else{
-			val splitNum = CC.getInt("splitNum");
-			val nqClient = new NaiveQuery(CC.getString("testArea"))
+			val nqClient = new NaiveQuery(testArea);
 			for(i<- 0 until splitNum){
 				nqClient.changeTestArea(i.toString)
 				nqClient.compProb(nqClient.getItemList)
@@ -38,16 +40,18 @@ object SingleClient extends App{
 		}
 	}
 	else{
+		val conf = ConfigFactory.load;
+		val testArea = conf.getString("Query.testArea");
+		val splitNum = conf.getInt("Query.splitNum");
 		if(argStr == "single"){
-			val tArea = CC.getString("testArea");
-			val oqClient = new OptimizedQuery(tArea, OptimizedQuery.getItemMap(tArea) );
+
+			val oqClient = new OptimizedQuery(testArea, OptimizedQuery.getItemMap(testArea) );
 			oqClient.readMAXMIN();
 			oqClient.rule1();
 			oqClient.rule2();
 			oqClient.rule3();
 		}
 		else{
-			val splitNum = CC.getInt("splitNum");
 			for(i<- 0 until splitNum){
 				val iStr = i.toString();
 				val oqClient = new OptimizedQuery(iStr, OptimizedQuery.getItemMap(iStr) );

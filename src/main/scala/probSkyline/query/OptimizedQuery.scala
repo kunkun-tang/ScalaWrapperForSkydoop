@@ -11,13 +11,16 @@ import scala.collection.mutable.HashSet;
 import scala.collection.mutable.ListBuffer;
 import scala.collection.immutable.List;
 import scala.collection.mutable.HashMap;
+import com.typesafe.config.ConfigFactory
 
 object OptimizedQuery{
 
-	val CC = Config.ClusterConfig;
-	val folderName = CC.getString("partFolder");
-	val dim = CC.getInt("dim");
+	val conf = ConfigFactory.load;
+	val folderName = conf.getString("Query.partFolder");
+	val dim = conf.getInt("Query.dim");
+
 	def fileName(area: String) = "./" + folderName + "/" + area;
+
 	var outputLists: ListBuffer[PartitionInfo] = null;
 	def getItemList(area: String) = Util.getItemList(fileName(area));
 	def getItemMap(area: String) = Util.getItemMap(fileName(area));

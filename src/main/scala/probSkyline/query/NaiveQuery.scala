@@ -9,14 +9,15 @@ import java.io.IOException;
 import scala.collection.mutable.HashSet;
 import scala.collection.mutable.ListBuffer;
 import scala.collection.immutable.List;
+import com.typesafe.config.ConfigFactory
 
 class NaiveQuery(var area: String){
-	
-	val CC = Config.ClusterConfig;
-	val folderName = CC.getString("partFolder");
-	def fileName = "./" + folderName + "/" + area;
-	val dim = CC.getInt("dim");
 
+	val conf = ConfigFactory.load;
+	val folderName = conf.getString("Query.partFolder");
+	val dim = conf.getInt("Query.dim");
+
+	def fileName = "./" + folderName + "/" + area;
 
 	/*
 	 * read original data file's data to memory.

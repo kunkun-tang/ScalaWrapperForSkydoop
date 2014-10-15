@@ -9,13 +9,14 @@ import scala.math;
 
 import scalaMapReduce.Config;
 import probSkyline.dataStructure._
+import com.typesafe.config.ConfigFactory
 
 object Util{
 
-	val CC = Config.ClusterConfig;
-	val srcName = CC.getString("srcName");
-	val dim = CC.getInt("dim")
-
+	val conf = ConfigFactory.load;
+	val srcName = conf.getString("Query.srcFile");
+	val dim = conf.getInt("Query.dim");
+	val objectNum = conf.getInt("Query.objectNum");
 
 	/*
 	 * get the whole map data[Int, item], filter objects whose item is still in 
@@ -105,7 +106,7 @@ object Util{
 				angle(i) = math.atan(tanPhi);	
 			}
 
-			val arrDouble = Config.arrDouble;
+			val arrDouble = computeArrDouble();
 
 			/* 
 			 * Current partitioning scheme only supports two and three dimensional cases.
@@ -138,6 +139,36 @@ object Util{
 			}
 		}
 		ret;
+	}
+
+  def computeArrDouble() = {
+		val splitNum = conf.getInt("GenData.splitNum");
+
+		val retList = new ListBuffer[ListBuffer[Double]](); 
+		if(dim == 2){
+			val arr = new ListBuffer[Double](); 
+			for(i<-0 until splitNum) 
+				arr.append(math.Pi/2/splitNum*(i+1));
+			
+			retList.append(arr);
+		}
+		else if (dim == 3){
+			val arr = new ListBuffer[Double]();
+			// for(i<-0 until 3) 
+			// 	arr.append(math.Pi/3*(i+1)/2);	
+
+//			arr.append(0.9235);
+//			arr.append(1.04);
+			arr.append(1.57079);
+
+			retList.append(arr);
+
+			val arr2 = new ListBuffer[Double]();
+			arr2.append(0.7854);	
+			arr2.append(1.57079);	
+			retList.append(arr2);
+		}
+		retList
 	}
 
 import java.lang.Object;

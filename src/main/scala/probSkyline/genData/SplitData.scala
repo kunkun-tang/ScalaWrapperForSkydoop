@@ -8,13 +8,16 @@ import probSkyline.IO._
 import java.io.IOException;
 import scala.collection.mutable.HashSet;
 import scala.collection.mutable.ListBuffer
+import com.typesafe.config.ConfigFactory
 
 object SplitData extends App{
 	
-	val CC = Config.ClusterConfig;
-	val fileName = CC.getString("srcName");
-	val splitNum = CC.getInt("splitNum")
-	val dim = CC.getInt("dim");
+
+	val conf = ConfigFactory.load;
+	val fileName = conf.getString("GenData.srcFile");
+	val dim = conf.getInt("GenData.dim");
+	val objectNum = conf.getInt("GenData.objectNum");
+	val splitNum = conf.getInt("GenData.splitNum")
 
 	/*
 	 * read original data file's data to memory.
