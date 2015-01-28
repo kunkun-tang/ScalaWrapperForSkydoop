@@ -43,6 +43,8 @@ object SingleClient extends App{
 		val conf = ConfigFactory.load;
 		val testArea = conf.getString("Query.testArea");
 		val splitNum = conf.getInt("Query.splitNum");
+
+		println("The WRTree computing strategy: ");
 		if(argStr == "single"){
 
 			val oqClient = new OptimizedQuery(testArea, OptimizedQuery.getItemMap(testArea) );

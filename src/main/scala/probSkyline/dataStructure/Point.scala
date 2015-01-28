@@ -60,6 +60,5 @@ class Point(val dim: Int) extends Serializable{
 	}
 
 	override def toString = coordinates.mkString(" ")
-
 }
 

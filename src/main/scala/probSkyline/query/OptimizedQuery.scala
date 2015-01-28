@@ -111,5 +111,4 @@ class OptimizedQuery(var area: String, val itemMap: HashMap[Integer, Item]){
 		val wrTree = new WRTree(cleanItemMap, area);
 		wrTree.run();
 	}
-
 }

@@ -51,9 +51,10 @@ class NaiveQuery(var area: String){
 				objSkyProb += aInst.prob * aInst.instSkyProb
 			}
 			aItem.objSkyProb = objSkyProb
-			if(objSkyProb > 0.01){ 
+			if(objSkyProb > 0.005){ 
 				satisfied += 1;
 			//	println("objSkyProb = "+ objSkyProb);
+				println(aItem.toString);
 			}
 		}
 		println(satisfied + " items remained in the partition");

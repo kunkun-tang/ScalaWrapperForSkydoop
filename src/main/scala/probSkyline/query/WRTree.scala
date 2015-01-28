@@ -4,6 +4,7 @@ import scalaMapReduce.Config;
 import probSkyline.Util;
 import probSkyline.dataStructure._;
 import probSkyline.IO._
+import scala.util.Random
 
 import java.io.IOException;
 import scala.collection.mutable.HashSet;
@@ -12,125 +13,186 @@ import scala.collection.immutable.List;
 import scala.collection.mutable.HashMap;
 import scala.math;
 import com.typesafe.config.ConfigFactory
+import xxl.core.spatial.rectangles.DoublePointRectangle;
+import scala.collection.JavaConversions.mapAsScalaMap;
+import xxl.core.spatial.points.DoublePoint;
 
 class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 
-	val pivotPoints: ListBuffer[Point] = genPivotPoints();
-	def area = testArea.toInt;
-	val separMap = new HashMap[Int, Separation]();
+	import WRTree._
 
+	val instList = cleanItemMap.values.flatMap(x => x.instances).toList;
+ 	val rand = new Random(System.currentTimeMillis());
+
+ 	// Origin is the (0,0) origin in the x-y axis.
+ 	var origin: DoublePoint = null;
+	var sortedRectInfo: List[(DoublePoint, RectInfo)] = null;
+	val rectangleMap = new HashMap[DoublePoint, RectInfo]();
+
+	/*
+	 * Init Function iterates every instance and store instance information
+	 * to rectangles. Then these info can be repeatedly applied.
+	 */
 	def init(){
-		for(i<-0 to WRTree.numPivot) separMap += i-> new Separation();
+		origin = new DoublePoint(Array.ofDim[Double](dim));
+
+		val pivotList = getPivotPoints(5);
+
+		pivotList.foreach{ pivotPoint => 
+			rectangleMap += pivotPoint -> new RectInfo()
+		};
+
+		instList.foreach{ inst => {
+
+			val pt = new DoublePoint(inst.pt.coordinates);
+			rectangleMap.foreach{ case (pivotPoint, rectInfo)=>
+				if(checkDomination(pt, pivotPoint)) rectInfo.update(inst)
+			}
+		}}
+		sortedRectInfo = rectangleMap.toSeq.sortWith( (x,y)=> y._2.size.compareTo(y._2.size)>0 ).toList;	
 	}
 
-	def genPivotPoints() = {
-		var retPivotPoints = new ListBuffer[Point]();
-		val retList = Util.computeArrDouble();
+	/**
+	 * Given the required number of pivot points, getPivotPoints returns
+	 * the a combination of pivot point list.
+	 */
+	def getPivotPoints(numPivotPoint: Int)={
 
-		if(WRTree.dim == 2){
-			val arrDouble = retList(0);
-			var bottem = 0.toDouble;
-			if(area > 0) bottem = arrDouble(area-1);
-			val top = arrDouble(area);
-
-			val lineAngle = (bottem + top)/2;
-
-			if(lineAngle < math.Pi/4){
-				for( i<- 1 to WRTree.numPivot ){
-					val x = (1.toDouble)/ (WRTree.numPivot.toDouble) * 1 * i;
-					val y = math.tan(lineAngle) * x;
-					val aPoint = new Point(2);
-					aPoint.coordinates(0) = x;
-					aPoint.coordinates(1) = y;
-					retPivotPoints += aPoint;
-				}
-			}
-			else{
-				for( i<- 1 to WRTree.numPivot ){
-					val y = (1.toDouble)/ (WRTree.numPivot.toDouble) * 1 * i;
-					val x = y / math.tan(lineAngle);
-					val aPoint = new Point(2);
-					aPoint.coordinates(0) = x;
-					aPoint.coordinates(1) = y;
-					retPivotPoints += aPoint;
-				}
-			}
-		}
-		else if(WRTree.dim == 3){
+		/*
+		 * onMap: every combination -> optimization power
+		 * pointList: make instList to pointList
+		 */
+		val opMap = HashMap[List[DoublePoint], Int]()
+		val pointList = instList.map(a => new DoublePoint(a.pt.coordinates));
+		for(randomNum <- 0 to 500){
 
 			/*
-			 * TODO: given arrDouble list, we should find the 
-			 * angle between the two lines.
+			 * pivotList: one combination
+			 * for loop finds elements from original dataset, and randomly selects
+			 * combination from elements.
 			 */
+			var pivotList = List[DoublePoint]();
+			var OP=0;
+			for(k<- 0 until numPivotPoint){
+				val aRandom = pointList(rand.nextInt(pointList.size)) ;
+				pivotList = aRandom :: pivotList ;
+			}
+
+			/*
+			 * rectangles returns the all rectangles with pivot points.
+			 * Then we collects how many instances in each rectangle.
+			 */
+			val rectangles = pivotList.map{ a => new DoublePointRectangle(origin, a)};
+			val rectangleMap = new HashMap[DoublePointRectangle, Int]();
+			rectangles.foreach{ rect => rectangleMap += rect -> 0};
+
+			pointList.foreach{ pt => {
+				rectangles.foreach{ rect=>
+					if(rect.contains(pt)) rectangleMap.update(rect, rectangleMap(rect)+1)
+				}
+			}}
+
+			/*
+			 * for each instance, it finds the best optimal pivot point, which has the
+			 * most optimization power 
+			 */
+			for(pt <- pointList){
+				OP += findOptimizationPower(rectangleMap, pt)
+			}
+
+			opMap += pivotList -> OP;
 		}
-//		println("retPivotPoints = "+ retPivotPoints);
-		retPivotPoints;
+
+		/*
+		 * it finds the pivot point combination with the largest optimization power.
+		 */
+		val result = opMap.maxBy(_._2);
+		println("The returned pivot point combination: " + result);
+		result._1
 	}
+
+	/*
+	 * findOptimizationPower looks for the best pivot point, which has the most optimization power.
+	 * and it will return the optimization power.
+	 */
+  def findOptimizationPower(rectangleMap: HashMap[DoublePointRectangle, Int], pt: DoublePoint): Int = {
+
+    val satMap = rectangleMap.
+    	filter{case (elem, num) => 
+    		checkDomination(elem.getCorner(true).asInstanceOf[DoublePoint], pt)==true
+    	}
+   	var retRect = null;
+   	if(satMap.size>0) satMap.maxBy(_._2)._2
+    else 0
+  }
+
 
 	def collectInfo(){
-		for((objID, item)<- cleanItemMap; instance<- item.instances){
-			
-			/*
-			 * It first located the separation area where the instance should be.
-			 * Then, it updates the aggregate info in that separation.
-			 */
-			val separID = findRightSeparation(instance);
-			separMap(separID).update(instance, item);
-		}
-	}
 
-	def findRightSeparation(inst: Instance) = {
-		/*
-		 * 0 represents the separation area which no instances are located.
-		 * 1- numPivot denotes the regular separation.
-		 */
-		var retSepar = WRTree.numPivot;
-		for( i<- pivotPoints.length-1 to (0, -1) )
-			if( inst.pt.checkDomination(pivotPoints(i))) retSepar = i;
-		retSepar;
-	}
+		instList.foreach{ inst => {
+			val pt = new DoublePoint(inst.pt.coordinates);
+			val (leftRect, rightRect) = checkArea(pt);
+			var aggregateMap = new HashMap[Int, Double]();
+			var testInstList: List[Instance] = instList;
 
-	def findLeftSeparation(inst: Instance) = {
-		/*
-		 * 0 represents the separation area which no instances are located.
-		 * 1- numPivot denotes the regular separation.
-		 */
-		var retSepar = 0;
-		for( i<- 0 until pivotPoints.length)
-			if( pivotPoints(i).checkDomination(inst.pt)) retSepar = i;
-		retSepar;
-	}
+			if(leftRect != null)
+				aggregateMap = rectangleMap(leftRect).aggregateMap.clone();
 
+			if(rightRect != null)
+				testInstList = rectangleMap(rightRect).instRectList.toList;
 
-	def iterCompProb(){
-		for( (objID, item) <- cleanItemMap; instance <- item.instances; 
-			if instance.instPotentialSkyline == true){
-
-			/*
-			 * lSepar represents the separation that lSepar-1 fully
-			 * dominates the instance, and the instance fully dominates
-			 * rSepar.
-			 */
-			val rSepar = findRightSeparation(instance);
-			val lSepar = findLeftSeparation(instance);
-
-			val globalAggregateMap = new HashMap[Int, Double]();
-			if(lSepar > 0){
-				for(i<-0 until lSepar){
-					separMap(i).updateGlobalAggregateMap(globalAggregateMap);
+			for(testInst <- testInstList){
+				val testpt = new DoublePoint(testInst.pt.coordinates);
+				if(leftRect != null ){
+					if(checkDomination(leftRect, testpt) && checkDomination(testpt, pt))
+						update(testInst, aggregateMap);
+				}
+				else{
+					if(checkDomination(testpt, pt))
+						update(testInst, aggregateMap);
 				}
 			}
 
-			for(i<- lSepar to rSepar)
-				separMap(i).updateGlobalAggregateMap(globalAggregateMap);
+			// println(aggregateMap);
+			inst.instSkyProb = multiplyMap(inst, aggregateMap);
+			// println("inst prob = " + inst.instSkyProb)
+		}}
 
-			instance.instSkyProb = multiplyMap(instance, globalAggregateMap)
-		}
 	}
 
-	def multiplyMap(inst: Instance, aggregateMap: HashMap[Int, Double])={
+	def checkArea(aPoint: DoublePoint) = {
+
+		var br = false;
+		var leftRect: DoublePoint = null;
+		var rightRect: DoublePoint = null;
+
+		for( (pivotPoint, info) <- sortedRectInfo; if(br == false)){
+			if( checkDomination(pivotPoint, aPoint) ){
+				leftRect = pivotPoint;
+				br = true;
+			}
+		}
+
+		br = false;
+		for( (pivotPoint, info) <- sortedRectInfo.reverse; if(br == false)){
+			if( checkDomination(aPoint, pivotPoint) ){
+				rightRect = pivotPoint;
+				br = true;
+			}
+		}
+
+		(leftRect, rightRect);
+	}
+
+	def update(inst: Instance, map: HashMap[Int, Double]){
+		if( !map.contains(inst.objID)) 
+			map += inst.objID -> 0.0;
+		map(inst.objID) += inst.prob;
+	}
+
+	def multiplyMap(inst: Instance, map: HashMap[Int, Double])={
 		var ret = 1.0;
-		for((objID, prob)<- aggregateMap; if inst.objID != objID)
+		for((objID, prob)<- map; if inst.objID != objID)
 			ret *= prob;
 		ret;
 	}
@@ -138,7 +200,6 @@ class WRTree(val cleanItemMap: HashMap[Integer, Item], val testArea: String){
 	def run(){
 		init();
 		collectInfo();
-		iterCompProb();
 	}
 }
 
@@ -149,33 +210,36 @@ object WRTree{
 	def folderName = conf.getString("Query.partFolder");
 	def dim = conf.getInt("Query.dim");
 	def numPivot = conf.getInt("Query.numPivot");
+	
+	def checkDomination(pt1: Array[Double], pt2: Array[Double]): Boolean={
+		var ret = true;
+		for(i <- 0 until pt1.length)
+			if(pt2(i) < pt1(i)) ret = false;
+		ret
+	}
+
+	def checkDomination(pt1: DoublePoint, pt2: DoublePoint): Boolean= 
+		checkDomination(pt1.getPoint().asInstanceOf[Array[Double]], pt2.getPoint().asInstanceOf[Array[Double]]);
 }
 
-class Separation{
-
-	// itemMap is the subset of cleanItemMap in OptimizedQuery.
-	val itemMap = new HashMap[Int, ListBuffer[Instance]]();
+class RectInfo{
 	
-	// aggregateMap is the sum of instance existing prob
-	// of cleanItemMap in OptimizedQuery.
+	/* 
+	 * aggregateMap is the sum of instance existing prob
+	 * of cleanItemMap in OptimizedQuery.
+	 */
+	var size = 0;
+
+	val instRectList = new ListBuffer[Instance]();
+
 	val aggregateMap = new HashMap[Int, Double]();
-
-	def update(inst: Instance, item: Item){
-		if( !itemMap.contains(item.objID)){
-			val instList = new ListBuffer[Instance]();
-			itemMap += item.objID -> instList;
-			aggregateMap += item.objID -> 0.0;
-		}
-		itemMap(item.objID) += inst;
-		aggregateMap(item.objID) += inst.prob;
+	def update(inst: Instance){
+		if( !aggregateMap.contains(inst.objID)) 
+			aggregateMap += inst.objID -> 0.0;
+		aggregateMap(inst.objID) += inst.prob;
+		size += 1;
+		instRectList += inst;
 	}
 
-	def updateGlobalAggregateMap(agMap: HashMap[Int, Double]){
-		for( (objID, agProb)<- aggregateMap ){
-			if(!agMap.contains(objID))
-				agMap += objID -> 0.0;
-			agMap(objID) += agProb;
-		}
-	}
-
+	override def toString() = aggregateMap.toString
 }
