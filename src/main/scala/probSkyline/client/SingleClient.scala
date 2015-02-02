@@ -39,6 +39,13 @@ object SingleClient extends App{
 			}
 		}
 	}
+	else if(args(0) == "medium"){
+		val conf = ConfigFactory.load;
+		val fileName = conf.getString("Query.srcFile");
+
+		val mqClient = new MediumQuery(fileName);
+		mqClient.compProb(mqClient.getItemList);
+	}
 	else{
 		val conf = ConfigFactory.load;
 		val testArea = conf.getString("Query.testArea");
