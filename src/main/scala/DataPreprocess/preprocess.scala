@@ -46,7 +46,7 @@ object PreProcess extends App{
 	  // transform element from JDouble to Double
 	  var valMatrix = js.map(list => list.map{ case (str, aVal) => 
 	  	aVal match{
-	  		case JString(x) => if(x.toDouble > 0.0)5.0 - x.toDouble else x.toDouble
+	  		case JString(x) => if(x.toDouble > 0.0)6.0 - x.toDouble else x.toDouble
 	  		case _ => throw new Exception("only JString works.")
 	  	}
 	  })
