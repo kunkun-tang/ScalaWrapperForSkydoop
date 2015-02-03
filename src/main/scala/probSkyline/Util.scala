@@ -23,7 +23,6 @@ object Util{
 	 * objectSet, which is returned by the first phase.
 	 */
 	def getItemList(fileName: String) = {
-
 		var aMap = new HashMap[Integer, Item]();
 		for(line <- Source.fromFile(fileName).getLines()){
 

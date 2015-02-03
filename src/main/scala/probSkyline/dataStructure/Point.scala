@@ -35,7 +35,7 @@ class Point(val dim: Int) extends Serializable{
 
 	def checkDomination(onePoint: Point) = {
 		var ret = true;
-		for(i<- 0 until dim if coordinates(i) > onePoint(i) ) ret = false; 
+		for(i<- 0 until dim if coordinates(i) >= onePoint(i) ) ret = false; 
 		ret;
 	}
 
